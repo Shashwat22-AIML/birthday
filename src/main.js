@@ -4,6 +4,7 @@ import Lenis from "lenis";
 import confetti from "canvas-confetti";
 import { content } from "./content.js";
 import photoManifest from "./photos.generated.json";
+import { ScrollExperience } from "./scrollExperience.js";
 import "./style.css";
 import "./sections/loader.js";
 import "./sections/hero.js";
@@ -23,22 +24,16 @@ import "./sections/lockScreen.js";
 gsap.registerPlugin(ScrollTrigger);
 
 const app = document.getElementById("app");
-let lenis;
+let experience = null;
 let isReducedMotion = false;
-let isLocked = false;
+let shouldShowLockScreen = false;
 
 function init() {
   checkReducedMotion();
-  checkDateLock();
+  determineLockState();
   renderApp();
   injectPhotoManifest();
   initTopbar();
-  initProgressBar();
-  initGrainOverlay();
-  initLenis();
-  initScrollTrigger();
-  initSections();
-  handleResize();
   handleFontsAndImagesLoaded();
 }
 
@@ -57,19 +52,41 @@ function checkReducedMotion() {
   }
 }
 
-function checkDateLock() {
-  if (!content.lockUntil) return;
+function determineLockState() {
+  const params = new URLSearchParams(window.location.search);
+  const isPreview = params.get("preview") === "1";
+  
+  if (isPreview) {
+    shouldShowLockScreen = false;
+    return;
+  }
+  
+  if (!content.lockUntil) {
+    shouldShowLockScreen = false;
+    return;
+  }
+  
   const lockTime = new Date(content.lockUntil).getTime();
   const now = Date.now();
-  const isPreview = new URLSearchParams(window.location.search).has("preview");
-  if (lockTime > now && !isPreview) {
-    isLocked = true;
-  }
+  shouldShowLockScreen = lockTime > now;
 }
 
 function renderApp() {
   const name = content.name;
   const birthdayLabel = content.birthdayLabel;
+  
+  const lockScreenHTML = shouldShowLockScreen ? `
+    <div id="lock-screen" class="lock-screen">
+      <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <h1 class="lock-title">Opens on ${birthdayLabel}</h1>
+      <p class="lock-subtitle">This experience unlocks on the big day. Come back then!</p>
+      <div class="lock-countdown" id="lock-countdown">00:00:00</div>
+      <p class="preview-notice">Add <code>?preview=1</code> to the URL to bypass</p>
+    </div>
+  ` : ``;
   
   app.innerHTML = `
     <div class="grain-overlay" aria-hidden="true"></div>
@@ -96,16 +113,7 @@ function renderApp() {
       <div class="loader-counter" id="loader-counter">000</div>
       <div class="loader-lines" id="loader-lines"></div>
     </div>
-    <div id="lock-screen" class="lock-screen" hidden>
-      <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
-      <h1 class="lock-title">Opens on ${birthdayLabel}</h1>
-      <p class="lock-subtitle">This experience unlocks on the big day. Come back then!</p>
-      <div class="lock-countdown" id="lock-countdown">00:00:00</div>
-      <p class="preview-notice">Add <code>?preview=1</code> to the URL to bypass</p>
-    </div>
+    ${lockScreenHTML}
     <div class="lenis-wrapper" id="lenis-wrapper" style="display: none;">
       <main id="main-content">
         <section id="hero" class="section" data-section="hero"></section>
@@ -135,10 +143,10 @@ function initTopbar() {
     isMenuOpen = !isMenuOpen;
     menuOverlay.classList.toggle("is-open", isMenuOpen);
     menuBtn.setAttribute("aria-expanded", isMenuOpen);
-    if (isMenuOpen && lenis) {
-      lenis.stop();
-    } else if (lenis) {
-      lenis.start();
+    if (isMenuOpen && experience?.lenis) {
+      experience.lenis.stop();
+    } else if (experience?.lenis) {
+      experience.lenis.start();
     }
   }
   
@@ -149,8 +157,8 @@ function initTopbar() {
       e.preventDefault();
       const targetId = link.getAttribute("href").slice(1);
       const target = document.getElementById(targetId);
-      if (target && lenis) {
-        lenis.scrollTo(target, { offset: 0, immediate: false });
+      if (target && experience?.lenis) {
+        experience.lenis.scrollTo(target, { offset: 0, immediate: false });
       }
       toggleMenu();
     });
@@ -163,156 +171,26 @@ function initTopbar() {
   });
 }
 
-function initProgressBar() {
-  const progressBar = document.querySelector(".progress-bar");
-  let scrollTimeout;
-  
-  function updateProgress() {
-    if (!lenis) return;
-    const scrollPercent = lenis.scroll / (lenis.limit || 1);
-    progressBar.style.transform = `scaleX(${scrollPercent})`;
-  }
-  
-  if (lenis) {
-    lenis.on("scroll", updateProgress);
-  }
-  
-  window.addEventListener("scroll", () => {
-    clearTimeout(scrollTimeout);
-    progressBar.style.opacity = "1";
-    scrollTimeout = setTimeout(() => {
-      progressBar.style.opacity = "0";
-    }, 1500);
-  }, { passive: true });
-}
-
-function initGrainOverlay() {
-  const grain = document.querySelector(".grain-overlay");
-  if (isReducedMotion) {
-    grain.style.opacity = "0.02";
-  }
-}
-
-function initLenis() {
-  const wrapper = document.getElementById("lenis-wrapper");
-  
-  if (isReducedMotion || isLocked) {
-    lenis = {
-      scroll: 0,
-      limit: document.documentElement.scrollHeight - window.innerHeight,
-      on: () => {},
-      off: () => {},
-      scrollTo: (target, options) => {
-        target.scrollIntoView({ behavior: options?.immediate ? "auto" : "smooth" });
-      },
-      stop: () => {},
-      start: () => {},
-      destroy: () => {},
-      resize: () => { this.limit = document.documentElement.scrollHeight - window.innerHeight; }
-    };
-    return;
-  }
-  
-  lenis = new Lenis({
-    wrapper: wrapper,
-    content: wrapper,
-    duration: 1.2,
-    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-    direction: "vertical",
-    gestureDirection: "vertical",
-    smooth: true,
-    mouseMultiplier: 1,
-    smoothTouch: false,
-    touchMultiplier: 2,
-    infinite: false
-  });
-  
-  function raf(time) {
-    lenis.raf(time);
-    requestAnimationFrame(raf);
-  }
-  requestAnimationFrame(raf);
-  
-  gsap.ticker.add((time) => {
-    lenis.raf(time * 1000);
-  });
-  
-  gsap.ticker.lagSmoothing(0);
-  
-  lenis.on("scroll", ScrollTrigger.update);
-}
-
-function initScrollTrigger() {
-  const wrapper = document.getElementById("lenis-wrapper");
-  ScrollTrigger.defaults({
-    scroller: isReducedMotion || isLocked ? window : wrapper,
-    markers: false
-  });
-  
-  ScrollTrigger.config({
-    ignoreMobileResize: true,
-    autoRefreshEvents: "visibilitychange,DOMContentLoaded,load"
-  });
-}
-
-function initSections() {
-  if (isLocked) return;
-  
-  const sections = [
-    "hero",
-    "isntJustA",
-    "specSheet",
-    "gallery",
-    "flipCards",
-    "reviews",
-    "choose",
-    "pivot",
-    "letter",
-    "finale"
-  ];
-  
-  sections.forEach(sectionName => {
-    const sectionEl = document.getElementById(sectionName === "isntJustA" ? "isnt-just-a" : sectionName);
-    if (sectionEl && window[`init${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)}`]) {
-      window[`init${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)}`](sectionEl, content, { gsap, ScrollTrigger, lenis, confetti });
-    }
-  });
-}
-
-function handleResize() {
-  let resizeTimeout;
-  window.addEventListener("resize", () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      if (lenis && lenis.resize) {
-        lenis.resize();
-      }
-      ScrollTrigger.refresh();
-    }, 250);
-  }, { passive: true });
-  
-  window.addEventListener("orientationchange", () => {
-    setTimeout(() => {
-      if (lenis && lenis.resize) {
-        lenis.resize();
-      }
-      ScrollTrigger.refresh();
-    }, 500);
-  });
-}
-
 function handleFontsAndImagesLoaded() {
   const loader = document.getElementById("loader");
   const wrapper = document.getElementById("lenis-wrapper");
   const footer = document.getElementById("footer");
   const lockScreen = document.getElementById("lock-screen");
   
-  if (isLocked) {
+  if (shouldShowLockScreen) {
     loader.style.display = "none";
-    lockScreen.hidden = false;
+    if (lockScreen) lockScreen.hidden = false;
     startLockCountdown();
     return;
   }
+  
+  initWebsite();
+}
+
+async function initWebsite() {
+  const loader = document.getElementById("loader");
+  const wrapper = document.getElementById("lenis-wrapper");
+  const footer = document.getElementById("footer");
   
   const fontPromises = [
     document.fonts.load('1em "Instrument Serif"'),
@@ -333,27 +211,27 @@ function handleFontsAndImagesLoaded() {
     });
   });
   
-  Promise.all([...fontPromises, ...criticalImages]).then(() => {
-    animateLoaderOut().then(() => {
-      loader.style.display = "none";
-      wrapper.style.display = "block";
-      footer.hidden = false;
-      ScrollTrigger.refresh();
-      if (lenis && lenis.resize) {
-        lenis.resize();
-      }
-    });
-  }).catch(() => {
-    animateLoaderOut().then(() => {
-      loader.style.display = "none";
-      wrapper.style.display = "block";
-      footer.hidden = false;
-      ScrollTrigger.refresh();
-      if (lenis && lenis.resize) {
-        lenis.resize();
-      }
-    });
-  });
+  try {
+    await Promise.all([...fontPromises, ...criticalImages]);
+  } catch {
+    // Continue anyway
+  }
+  
+  await animateLoaderOut();
+  
+  loader.style.display = "none";
+  wrapper.style.display = "block";
+  footer.hidden = false;
+  
+  experience = new ScrollExperience({ content });
+  experience.init();
+  
+  await experience.initializeAllSections();
+  
+  ScrollTrigger.refresh();
+  if (experience.lenis && experience.lenis.resize) {
+    experience.lenis.resize();
+  }
 }
 
 function animateLoaderOut() {
@@ -393,14 +271,19 @@ function animateLoaderOut() {
 function startLockCountdown() {
   const countdownEl = document.getElementById("lock-countdown");
   const lockTime = new Date(content.lockUntil).getTime();
+  let countdownInterval;
   
   function updateCountdown() {
     const now = Date.now();
     const diff = lockTime - now;
     
     if (diff <= 0) {
-      countdownEl.textContent = "00:00:00";
-      window.location.reload();
+      if (countdownEl) countdownEl.textContent = "00:00:00";
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+      unlockWebsite();
       return;
     }
     
@@ -413,11 +296,18 @@ function startLockCountdown() {
     if (days > 0) text += `${days}d `;
     text += `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     
-    countdownEl.textContent = text;
+    if (countdownEl) countdownEl.textContent = text;
   }
   
   updateCountdown();
-  setInterval(updateCountdown, 1000);
+  countdownInterval = setInterval(updateCountdown, 1000);
+}
+
+function unlockWebsite() {
+  const lockScreen = document.getElementById("lock-screen");
+  if (lockScreen) lockScreen.hidden = true;
+  shouldShowLockScreen = false;
+  initWebsite();
 }
 
 function formatNumber(num) {
@@ -435,8 +325,7 @@ function indianNumberFormat(num) {
 window.formatNumber = formatNumber;
 window.indianNumberFormat = indianNumberFormat;
 window.content = content;
-window.lenis = lenis;
 
 document.addEventListener("DOMContentLoaded", init);
 
-export { lenis, content, formatNumber, indianNumberFormat };
+export { experience, content, formatNumber, indianNumberFormat };

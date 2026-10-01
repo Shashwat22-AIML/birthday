@@ -1,4 +1,4 @@
-export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, confetti }) {
+export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, confetti, experience }) {
   const stats = content.stats;
   const name = content.name;
 
@@ -18,21 +18,22 @@ export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, 
   ];
 
   sectionEl.innerHTML = `
-    <div class="container" style="padding: var(--space-4xl) var(--space-lg);">
-      <div style="max-width: 800px; margin: 0 auto;">
-        <span class="mono-label" style="display: block; margin-bottom: var(--space-md);">Spec Sheet — ${name}-1</span>
-        <h2 class="section-title" style="margin-bottom: var(--space-3xl);">Technical specifications</h2>
+    <div class="container" style="padding: var(--space-4xl) var(--space-lg); min-height: 150vh; position: relative;">
+      <div class="spec-bg" style="position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse at 20% 50%, var(--pink-20) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, var(--cork-20) 0%, transparent 50%); opacity: 0; will-change: opacity;"></div>
+      <div style="max-width: 800px; margin: 0 auto; position: relative; z-index: 10;">
+        <span class="mono-label" style="display: block; margin-bottom: var(--space-md); opacity: 0; transform: translateY(20px);" id="spec-label">Spec Sheet — ${name}-1</span>
+        <h2 class="section-title" style="margin-bottom: var(--space-3xl); opacity: 0; transform: translateY(30px);">Technical specifications</h2>
         <div class="spec-table" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg) var(--space-2xl); margin-bottom: var(--space-4xl);">
           ${rows.map((row, i) => `
-            <div class="spec-row" style="opacity: 0; transform: translateY(20px); grid-column: 1; transition: opacity 0.6s ease, transform 0.6s ease;">
+            <div class="spec-row" style="opacity: 0; transform: translateY(30px); grid-column: 1; will-change: opacity, transform;">
               <span class="mono-label">${row.label}</span>
             </div>
-            <div class="spec-value" style="opacity: 0; transform: translateY(20px); grid-column: 2; text-align: right; transition: opacity 0.6s ease, transform 0.6s ease;">
+            <div class="spec-value" style="opacity: 0; transform: translateY(30px); grid-column: 2; text-align: right; will-change: opacity, transform;">
               <span class="counter" data-value="${row.value}" data-formatter="${row.formatter}" data-suffix="${row.suffix}">0</span>
             </div>
           `).join("")}
         </div>
-        <div class="mood-section" style="padding-top: var(--space-3xl); border-top: 1px solid var(--ink-20);">
+        <div class="mood-section" style="padding-top: var(--space-3xl); border-top: 1px solid var(--ink-20); opacity: 0; transform: translateY(30px);">
           <span class="mono-label" style="display: block; margin-bottom: var(--space-lg);">Mood slider</span>
           <div class="mood-slider" id="mood-slider" role="slider" aria-label="Mood: Chaotic, Sleepy, or Hungry" aria-valuemin="0" aria-valuemax="2" aria-valuenow="1" tabindex="0">
             <div class="mood-slider-track"></div>
@@ -49,11 +50,12 @@ export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, 
           </div>
         </div>
       </div>
+      <div class="spec-transition" style="position: absolute; bottom: 0; left: 0; right: 0; height: 50vh; z-index: 2; pointer-events: none; background: linear-gradient(to top, var(--cream), transparent); opacity: 0;"></div>
     </div>
   `;
 
   if (isReducedMotion()) {
-    document.querySelectorAll(".spec-row, .spec-value").forEach(el => {
+    document.querySelectorAll(".spec-row, .spec-value, #spec-label, .mood-section").forEach(el => {
       el.style.opacity = "1";
       el.style.transform = "none";
     });
@@ -62,21 +64,54 @@ export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, 
     return;
   }
 
+  const specBg = sectionEl.querySelector(".spec-bg");
+  const specTransition = sectionEl.querySelector(".spec-transition");
+  const specLabel = document.getElementById("spec-label");
+  const moodSection = sectionEl.querySelector(".mood-section");
+
+  gsap.set([specLabel, moodSection], { opacity: 0, y: 30 });
+  gsap.set(specBg, { opacity: 0 });
+  gsap.set(specTransition, { opacity: 0 });
+
   gsap.utils.toArray(".spec-row, .spec-value").forEach((el, i) => {
     gsap.to(el, {
       scrollTrigger: {
         trigger: sectionEl,
-        start: "top 80%",
-        end: "top 30%",
+        start: "top 75%",
+        end: "top 25%",
         scrub: 0.5,
         onEnter: () => animateRow(el, i)
       },
       opacity: 1,
       y: 0,
-      duration: 0.6,
-      delay: i * 0.05,
+      duration: 0.8,
+      delay: i * 0.04,
       ease: "power2.out"
     });
+  });
+
+  gsap.timeline({
+    scrollTrigger: {
+      trigger: sectionEl,
+      start: "top 60%",
+      end: "top 20%",
+      scrub: 0.5,
+      onEnter: () => {
+        gsap.to([specLabel, moodSection], { opacity: 1, y: 0, duration: 1, stagger: 0.1, ease: "power3.out" });
+        gsap.to(specBg, { opacity: 1, duration: 1.5, ease: "power2.out" });
+      }
+    }
+  });
+
+  gsap.to(specTransition, {
+    scrollTrigger: {
+      trigger: sectionEl,
+      start: "bottom 80%",
+      end: "bottom top",
+      scrub: 1
+    },
+    opacity: 1,
+    ease: "none"
   });
 
   function animateRow(el, index) {
@@ -113,7 +148,7 @@ export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, 
 
     gsap.to(obj, {
       val: numValue,
-      duration: 1.5,
+      duration: 1.8,
       ease: "power2.out",
       onUpdate: () => {
         let formatted;
@@ -155,30 +190,9 @@ export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, 
     function setMood(index) {
       currentMood = index;
       const mood = moods[index];
-      gsap.to(thumb, {
-        left: positions[index],
-        duration: 0.4,
-        ease: "power2.out"
-      });
-      gsap.to(emojiEl, {
-        scale: 0,
-        duration: 0.2,
-        ease: "power2.in",
-        onComplete: () => {
-          emojiEl.textContent = mood.emoji;
-          gsap.to(emojiEl, { scale: 1, duration: 0.3, ease: "back.out(1.5)" });
-        }
-      });
-      gsap.to(captionEl, {
-        opacity: 0,
-        y: 10,
-        duration: 0.2,
-        ease: "power2.in",
-        onComplete: () => {
-          captionEl.textContent = mood.caption;
-          gsap.to(captionEl, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" });
-        }
-      });
+      gsap.to(thumb, { left: positions[index], duration: 0.4, ease: "power2.out" });
+      gsap.to(emojiEl, { scale: 0, duration: 0.2, ease: "power2.in", onComplete: () => { emojiEl.textContent = mood.emoji; gsap.to(emojiEl, { scale: 1, duration: 0.3, ease: "back.out(1.5)" }); } });
+      gsap.to(captionEl, { opacity: 0, y: 10, duration: 0.2, ease: "power2.in", onComplete: () => { captionEl.textContent = mood.caption; gsap.to(captionEl, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }); } });
       slider.setAttribute("aria-valuenow", index);
     }
 
@@ -192,20 +206,12 @@ export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, 
     });
 
     slider.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        setMood(Math.max(0, currentMood - 1));
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        setMood(Math.min(2, currentMood + 1));
-      }
+      if (e.key === "ArrowLeft") { e.preventDefault(); setMood(Math.max(0, currentMood - 1)); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); setMood(Math.min(2, currentMood + 1)); }
     });
 
     let isDragging = false;
-    slider.addEventListener("pointerdown", (e) => {
-      isDragging = true;
-      slider.setPointerCapture(e.pointerId);
-    });
+    slider.addEventListener("pointerdown", (e) => { isDragging = true; slider.setPointerCapture(e.pointerId); });
     slider.addEventListener("pointermove", (e) => {
       if (!isDragging) return;
       const rect = slider.getBoundingClientRect();
@@ -225,10 +231,7 @@ export function initSpecSheet(sectionEl, content, { gsap, ScrollTrigger, lenis, 
       setMood(index);
       slider.releasePointerCapture(e.pointerId);
     });
-    slider.addEventListener("pointercancel", (e) => {
-      isDragging = false;
-      slider.releasePointerCapture(e.pointerId);
-    });
+    slider.addEventListener("pointercancel", (e) => { isDragging = false; slider.releasePointerCapture(e.pointerId); });
 
     setMood(1);
   }

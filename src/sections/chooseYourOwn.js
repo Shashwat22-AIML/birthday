@@ -1,4 +1,4 @@
-export function initChoose(sectionEl, content, { gsap, ScrollTrigger, lenis }) {
+export function initChoose(sectionEl, content, { gsap, ScrollTrigger, lenis, experience }) {
   const name = content.name;
 
   const tiers = [
@@ -52,19 +52,21 @@ export function initChoose(sectionEl, content, { gsap, ScrollTrigger, lenis }) {
   `).join("");
 
   sectionEl.innerHTML = `
-    <div class="container" style="padding: var(--space-4xl) var(--space-lg);">
-      <div style="max-width: 1000px; margin: 0 auto; text-align: center; margin-bottom: var(--space-3xl);">
+    <div class="container" style="padding: var(--space-4xl) var(--space-lg); min-height: 150vh; position: relative;">
+      <div class="choose-bg" style="position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse at center, var(--pink-20) 0%, transparent 60%); opacity: 0; will-change: opacity;"></div>
+      <div style="max-width: 1000px; margin: 0 auto; text-align: center; margin-bottom: var(--space-3xl); position: relative; z-index: 10; opacity: 0; transform: translateY(30px);" id="choose-header">
         <span class="mono-label" style="display: block; margin-bottom: var(--space-md);">Pick Your Plan</span>
         <h2 class="section-title" style="margin-bottom: var(--space-xs);">Choose your own ${name}</h2>
         <p class="section-subtitle">All paths lead to the same destination. But pick anyway.</p>
       </div>
-      <div class="card-grid" id="tier-grid" style="margin-bottom: var(--space-3xl);">
+      <div class="card-grid" id="tier-grid" style="margin-bottom: var(--space-3xl); position: relative; z-index: 10;">
         ${tiersHTML}
       </div>
-      <div id="choose-result" style="text-align: center; opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease;">
+      <div id="choose-result" style="text-align: center; opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; position: relative; z-index: 10;">
         <p style="font-family: var(--font-display); font-size: var(--fs-h3); font-style: italic; color: var(--ink); margin-bottom: var(--space-md);">All options lead to the same ending:</p>
         <p style="font-family: var(--font-display); font-size: var(--fs-h2); font-style: italic; color: var(--pink);">you're stuck with me. Happy Birthday.</p>
       </div>
+      <div class="choose-transition" style="position: absolute; bottom: 0; left: 0; right: 0; height: 50vh; z-index: 2; pointer-events: none; background: linear-gradient(to top, var(--cream), transparent); opacity: 0;"></div>
     </div>
   `;
 
@@ -101,22 +103,67 @@ export function initChoose(sectionEl, content, { gsap, ScrollTrigger, lenis }) {
     return;
   }
 
+  const chooseBg = sectionEl.querySelector(".choose-bg");
+  const chooseTransition = sectionEl.querySelector(".choose-transition");
+  const chooseHeader = document.getElementById("choose-header");
+
+  gsap.set(chooseHeader, { opacity: 0, y: 30 });
+  gsap.set(chooseBg, { opacity: 0 });
+  gsap.set(chooseTransition, { opacity: 0 });
+
+  gsap.to(chooseHeader, {
+    scrollTrigger: {
+      trigger: sectionEl,
+      start: "top 70%",
+      end: "top 30%",
+      scrub: 0.5
+    },
+    opacity: 1,
+    y: 0,
+    duration: 1,
+    ease: "power3.out"
+  });
+
+  gsap.to(chooseBg, {
+    scrollTrigger: {
+      trigger: sectionEl,
+      start: "top 60%",
+      end: "top 20%",
+      scrub: 0.5
+    },
+    opacity: 1,
+    duration: 1.5,
+    ease: "power2.out"
+  });
+
   gsap.fromTo(".tier-card", 
-    { opacity: 0, y: 40 },
+    { opacity: 0, y: 50, scale: 0.95 },
     {
       scrollTrigger: {
         trigger: sectionEl,
-        start: "top 75%",
+        start: "top 70%",
         end: "top 25%",
         scrub: 0.5
       },
       opacity: 1,
       y: 0,
+      scale: 1,
       stagger: 0.1,
-      duration: 0.8,
-      ease: "power2.out"
+      duration: 1,
+      ease: "power3.out"
     }
   );
+
+  gsap.to(chooseTransition, {
+    scrollTrigger: {
+      trigger: sectionEl,
+      start: "bottom 80%",
+      end: "bottom top",
+      scrub: 1
+    },
+    opacity: 1,
+    ease: "none"
+  });
 }
 
 function isReducedMotion() {

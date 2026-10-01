@@ -1,10 +1,10 @@
-export function initFooter(sectionEl, content, { gsap, ScrollTrigger, lenis }) {
+export function initFooter(sectionEl, content, { gsap, ScrollTrigger, lenis, experience }) {
   const fromName = content.fromName;
   const name = content.name;
   const disclaimer = content.footerDisclaimer || `This entire site is a fictional creative project. ${name} is very real.`;
 
   sectionEl.innerHTML = `
-    <div class="container" style="max-width: 600px;">
+    <div class="container" style="max-width: 600px; padding: var(--space-3xl) var(--space-lg);">
       <p class="footer-text">Built by ${fromName}, with love.</p>
       <button class="btn btn-secondary" id="copy-url-btn" style="margin: var(--space-lg) 0;" aria-label="Copy page URL">
         Copy URL

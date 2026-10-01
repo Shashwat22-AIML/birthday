@@ -17,7 +17,7 @@ function getPhotoCard(filename, manifest) {
   `;
 }
 
-export function initFlipCards(sectionEl, content, { gsap, ScrollTrigger, lenis }) {
+export function initFlipCards(sectionEl, content, { gsap, ScrollTrigger, lenis, experience }) {
   const memories = content.memories || [];
   const manifest = getManifest();
   const hasRealPhotos = manifest.length > 0 && memories.some(m => manifest.some(p => p.filename === m.photo));
@@ -41,21 +41,23 @@ export function initFlipCards(sectionEl, content, { gsap, ScrollTrigger, lenis }
   }).join("");
 
   sectionEl.innerHTML = `
-    <div class="container" style="padding: var(--space-4xl) var(--space-lg);">
-      <div style="max-width: 1000px; margin: 0 auto; text-align: center; margin-bottom: var(--space-3xl);">
-        <span class="mono-label" style="display: block; margin-bottom: var(--space-md);">Encrypted Memories</span>
-        <h2 class="section-title" style="margin-bottom: var(--space-xs);">Write a memory. Flip. Instantly secure.</h2>
-        <p class="section-subtitle">Tap any card to reveal what's on the other side.</p>
+    <div class="container" style="padding: var(--space-4xl) var(--space-lg); min-height: 150vh; position: relative;">
+      <div class="flip-bg" style="position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse at center, var(--pink-20) 0%, transparent 60%); opacity: 0; will-change: opacity;"></div>
+      <div style="max-width: 1000px; margin: 0 auto; text-align: center; margin-bottom: var(--space-3xl); position: relative; z-index: 10;">
+        <span class="mono-label" style="display: block; margin-bottom: var(--space-md); opacity: 0; transform: translateY(20px);" id="flip-label">Encrypted Memories</span>
+        <h2 class="section-title" style="margin-bottom: var(--space-xs); opacity: 0; transform: translateY(30px);">Write a memory. Flip. Instantly secure.</h2>
+        <p class="section-subtitle" style="opacity: 0; transform: translateY(20px);">Tap any card to reveal what's on the other side.</p>
       </div>
-      <div class="card-grid" id="flip-grid" style="margin-bottom: var(--space-3xl);">
+      <div class="card-grid" id="flip-grid" style="margin-bottom: var(--space-3xl); position: relative; z-index: 10;">
         ${cardsHTML}
       </div>
-      <div style="text-align: center;">
+      <div style="text-align: center; position: relative; z-index: 10; opacity: 0; transform: translateY(30px);" id="decode-section">
         <button class="btn btn-primary decode-btn" id="decode-btn" aria-label="Decode secret message">
           Decode Message
         </button>
         <div class="scramble-text" id="scramble-text" aria-live="polite" aria-atomic="true" style="margin-top: var(--space-xl); min-height: 1.5em;"></div>
       </div>
+      <div class="flip-transition" style="position: absolute; bottom: 0; left: 0; right: 0; height: 50vh; z-index: 2; pointer-events: none; background: linear-gradient(to top, var(--cream), transparent); opacity: 0;"></div>
     </div>
   `;
 
@@ -117,24 +119,57 @@ export function initFlipCards(sectionEl, content, { gsap, ScrollTrigger, lenis }
       card.style.cursor = "default";
       card.removeEventListener("click", toggleFlip);
     });
+    return;
   }
 
+  const flipBg = sectionEl.querySelector(".flip-bg");
+  const flipTransition = sectionEl.querySelector(".flip-transition");
+  const flipLabel = document.getElementById("flip-label");
+  const decodeSection = document.getElementById("decode-section");
+
+  gsap.set([flipLabel, decodeSection], { opacity: 0, y: 30 });
+  gsap.set(flipBg, { opacity: 0 });
+  gsap.set(flipTransition, { opacity: 0 });
+
   gsap.fromTo(".flip-card", 
-    { opacity: 0, y: 40 },
+    { opacity: 0, y: 50, rotationX: -15 },
     {
       scrollTrigger: {
         trigger: sectionEl,
-        start: "top 75%",
-        end: "top 25%",
+        start: "top 70%",
+        end: "top 20%",
         scrub: 0.5
       },
       opacity: 1,
       y: 0,
-      stagger: 0.1,
-      duration: 0.8,
-      ease: "power2.out"
+      rotationX: 0,
+      stagger: 0.08,
+      duration: 1,
+      ease: "power3.out"
     }
   );
+
+  gsap.timeline({
+    scrollTrigger: {
+      trigger: sectionEl,
+      start: "top 60%",
+      end: "top 20%",
+      scrub: 0.5
+    }
+  })
+  .to([flipLabel, decodeSection], { opacity: 1, y: 0, duration: 1, stagger: 0.1, ease: "power3.out" }, 0)
+  .to(flipBg, { opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+
+  gsap.to(flipTransition, {
+    scrollTrigger: {
+      trigger: sectionEl,
+      start: "bottom 80%",
+      end: "bottom top",
+      scrub: 1
+    },
+    opacity: 1,
+    ease: "none"
+  });
 }
 
 function getManifest() {

@@ -2,7 +2,7 @@ export const content = {
   name: "Harshita",
   birthdayLabel: "6 October",
   fromName: "Shashwat",
-  lockUntil: null,
+  lockUntil: "2026-10-06T00:00:00",
 
   stats: {
     messagesExchanged: 109189,

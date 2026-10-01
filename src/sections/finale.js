@@ -1,9 +1,11 @@
-export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, confetti }) {
+export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, confetti, experience }) {
   const name = content.name;
   const birthdayLabel = content.birthdayLabel;
 
   sectionEl.innerHTML = `
-    <div class="container" style="height: 150vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-4xl) var(--space-lg); background: var(--night); position: relative;">
+    <div class="container" style="height: 200vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-4xl) var(--space-lg); background: var(--night); position: relative;">
+      <div class="finale-bg" style="position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse at center, rgba(242,167,184,0.12) 0%, transparent 50%), radial-gradient(ellipse at center, rgba(201,149,92,0.12) 0%, transparent 50%); opacity: 1;"></div>
+      <div class="finale-ambient-particles" style="position: absolute; inset: 0; z-index: 1; pointer-events: none;"></div>
       <div class="finale-content" style="z-index: 10; max-width: 500px;">
         <svg class="cake-svg" id="cake-svg" viewBox="0 0 320 400" aria-label="Birthday cake with a lit candle" role="img" style="margin-bottom: var(--space-xl); cursor: pointer;" tabindex="0">
           <defs>
@@ -60,7 +62,7 @@ export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, con
         <h2 id="finale-message" class="section-title" style="font-size: var(--fs-h1); color: var(--cream); opacity: 0; transform: translateY(30px); transition: opacity 0.8s ease, transform 0.8s ease; white-space: pre-line;">Happy Birthday, ${name}.\n${birthdayLabel}</h2>
         <button id="relight-btn" class="btn btn-ghost" style="margin-top: var(--space-2xl); opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease;">Light it again</button>
       </div>
-      <canvas class="confetti-canvas" id="confetti-canvas" aria-hidden="true"></canvas>
+      <div class="finale-transition" style="position: absolute; bottom: 0; left: 0; right: 0; height: 50vh; z-index: 2; pointer-events: none; background: linear-gradient(to top, var(--night), transparent); opacity: 0;"></div>
     </div>
   `;
 
@@ -71,17 +73,9 @@ export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, con
   const prompt = document.getElementById("finale-prompt");
   const message = document.getElementById("finale-message");
   const relightBtn = document.getElementById("relight-btn");
-  const confettiCanvas = document.getElementById("confetti-canvas");
 
   let isBlown = false;
-  let confettiInstance = null;
-
-  function initConfetti() {
-    confettiInstance = confetti.create(confettiCanvas, {
-      resize: true,
-      useWorker: true
-    });
-  }
+  let celebrationTriggered = false;
 
   function blowOutCandle() {
     if (isBlown) return;
@@ -90,7 +84,7 @@ export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, con
     gsap.to(candleFlame, {
       scale: 0,
       opacity: 0,
-      duration: 0.3,
+      duration: 0.4,
       ease: "power2.in",
       onComplete: () => {
         candleFlame.style.display = "none";
@@ -100,9 +94,14 @@ export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, con
         smoke2.classList.add("is-visible");
         
         setTimeout(() => {
-          triggerConfetti();
-          showMessage();
-        }, 300);
+          if (!celebrationTriggered) {
+            celebrationTriggered = true;
+            if (experience) {
+              experience.triggerFullViewportCelebration();
+            }
+            showMessage();
+          }
+        }, 400);
       }
     });
 
@@ -119,54 +118,17 @@ export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, con
     }
   }
 
-  function triggerConfetti() {
-    if (!confettiInstance) initConfetti();
-
-    const colors = ["#F2A7B8", "#C9955C", "#F4EEE6", "#FFD700", "#FF8C00"];
-
-    confettiInstance({
-      particleCount: 100,
-      spread: 100,
-      origin: { x: 0.2, y: 0.8 },
-      colors,
-      gravity: 0.8,
-      scalar: 1.2,
-      drift: -0.5
-    });
-
-    confettiInstance({
-      particleCount: 100,
-      spread: 100,
-      origin: { x: 0.8, y: 0.8 },
-      colors,
-      gravity: 0.8,
-      scalar: 1.2,
-      drift: 0.5
-    });
-
-    setTimeout(() => {
-      confettiInstance({
-        particleCount: 150,
-        spread: 140,
-        origin: { x: 0.5, y: 0.5 },
-        colors,
-        gravity: 0.6,
-        scalar: 1.5
-      });
-    }, 200);
-  }
-
   function showMessage() {
     gsap.to(message, {
       opacity: 1,
       y: 0,
-      duration: 1,
+      duration: 1.2,
       ease: "power3.out",
       onComplete: () => {
         gsap.to(relightBtn, {
           opacity: 1,
           y: 0,
-          duration: 0.5,
+          duration: 0.6,
           delay: 0.5,
           ease: "power2.out"
         });
@@ -176,14 +138,15 @@ export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, con
     if (lenis) {
       setTimeout(() => {
         lenis.scrollTo(document.getElementById("footer"), { offset: 0, immediate: false });
-      }, 2000);
+      }, 3000);
     }
   }
 
   function relightCandle() {
     isBlown = false;
+    celebrationTriggered = false;
     candleFlame.style.display = "block";
-    gsap.to(candleFlame, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)" });
+    gsap.to(candleFlame, { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.5)" });
     smoke1.classList.remove("is-visible");
     smoke2.classList.remove("is-visible");
     gsap.to(message, { opacity: 0, y: 30, duration: 0.5, ease: "power2.in" });
@@ -200,6 +163,69 @@ export function initFinale(sectionEl, content, { gsap, ScrollTrigger, lenis, con
 
   if (isReducedMotion()) {
     candleFlame.style.animation = "none";
+  }
+
+  const ambientContainer = sectionEl.querySelector(".finale-ambient-particles");
+  createAmbientParticles(ambientContainer, experience);
+
+  if (experience) {
+    experience.registerPhotoElement("finale-cake", cakeSvg, { candleFlame });
+  }
+}
+
+function createAmbientParticles(container, experience) {
+  if (!container) return;
+  
+  const colors = ["rgba(242,167,184,0.6)", "rgba(201,149,92,0.6)", "rgba(244,238,230,0.4)", "rgba(255,215,0,0.5)"];
+  const particleCount = 30;
+  
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement("div");
+    const size = Math.random() * 6 + 2;
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const duration = Math.random() * 20 + 15;
+    const delay = Math.random() * 10;
+    
+    particle.style.cssText = `
+      position: absolute;
+      left: ${x}%;
+      top: ${y}%;
+      width: ${size}px;
+      height: ${size}px;
+      background: ${color};
+      border-radius: 50%;
+      pointer-events: none;
+      will-change: transform, opacity;
+      opacity: 0;
+    `;
+    
+    container.appendChild(particle);
+    
+    gsap.to(particle, {
+      opacity: Math.random() * 0.5 + 0.2,
+      duration: 2,
+      delay: delay,
+      ease: "power2.out"
+    });
+    
+    gsap.to(particle, {
+      y: -window.innerHeight * 1.5,
+      x: (Math.random() - 0.5) * 200,
+      rotation: Math.random() * 360,
+      duration: duration,
+      delay: delay,
+      ease: "none",
+      repeat: -1,
+      onRepeat: () => {
+        gsap.set(particle, {
+          y: window.innerHeight * 1.2,
+          x: Math.random() * window.innerWidth,
+          opacity: Math.random() * 0.5 + 0.2
+        });
+      }
+    });
   }
 }
 

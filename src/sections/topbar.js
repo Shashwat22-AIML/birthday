@@ -1,12 +1,11 @@
-export function initTopbar(sectionEl, content, { gsap, ScrollTrigger, lenis }) {
-  // Topbar is rendered in main.js, this is just for any scroll-based behavior
+export function initTopbar(sectionEl, content, { gsap, ScrollTrigger, lenis, experience }) {
   const topbar = document.querySelector(".topbar");
   let lastScroll = 0;
   
   if (isReducedMotion()) return;
   
-  if (lenis) {
-    lenis.on("scroll", ({ scroll, direction }) => {
+  if (experience && experience.lenis) {
+    experience.lenis.on("scroll", ({ scroll, direction }) => {
       if (scroll > lastScroll && scroll > 200) {
         gsap.to(topbar, { y: -100, duration: 0.3, ease: "power2.out" });
       } else {
